@@ -1,6 +1,6 @@
 [project]
 name = "xmpy_ctp"
-version = "1.0.0"
+version = "1.0.1"
 description = "星梦(xmpy)框架的CTP底层接口"
 readme = "README.md"
 license = {text = "MIT"}

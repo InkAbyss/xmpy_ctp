@@ -17,12 +17,12 @@ from xmpy.包_交易核心.模块_常数 import (
 from xmpy.包_交易核心.模块_网关 import 类_基础网关
 from xmpy.包_交易核心.模块_对象 import (
     类_行情数据,
-    类_委托数据,
+    类_订单数据,
     类_成交数据,
     类_持仓数据,
     类_账户数据,
     类_合约数据,
-    类_委托请求,
+    类_订单请求,
     类_撤单请求,
     类_订阅请求
 )
@@ -173,11 +173,11 @@ class 类_CTP网关(类_基础网关):
     def 订阅行情(self, 请求: 类_订阅请求) -> None:
         self.行情接口.订阅(请求)
 
-    def 发送委托(self, 请求: 类_委托请求) -> str:
+    def 发送委托(self, 请求: 类_订单请求) -> str:
         return self.交易接口.发送委托(请求)
 
-    def 撤消订单(self, 请求: 类_撤单请求) -> None:
-        self.交易接口.撤消订单(请求)
+    def 撤销订单(self, 请求: 类_撤单请求) -> None:
+        self.交易接口.撤销订单(请求)
 
     def 查询账户(self) -> None:
         self.交易接口.查询账户()
@@ -426,10 +426,10 @@ class 类_CTP交易接口(TdApi):
         委托编号 = f"{self.前置编号}_{self.会话编号}_{self.委托编号}"
         合约 = 合约映射表[数据["InstrumentID"]]
 
-        委托 = 类_委托数据(
+        委托 = 类_订单数据(
             代码=数据["InstrumentID"],
             交易所=合约.交易所,
-            委托编号=委托编号,
+            订单编号=委托编号,
             方向=方向映射_CTP转VT[数据["Direction"]],
             开平=开平映射_CTP转VT.get(数据["CombOffsetFlag"], 类_开平.NONE),
             价格=数据["LimitPrice"],
@@ -452,7 +452,8 @@ class 类_CTP交易接口(TdApi):
             返回值 = self.reqQryInstrument({}, self.请求编号)
             if not 返回值:
                 break
-            sleep(1)
+            else:
+                sleep(1)
 
     def onRspQryInvestorPosition(self, 数据: dict, 错误: dict, 请求编号: int, 最后标识: bool):
         """持仓查询回报"""
@@ -589,10 +590,10 @@ class 类_CTP交易接口(TdApi):
             self.网关.记录日志(f"未知委托类型：{类型元组}")
             return
 
-        委托 = 类_委托数据(
+        委托 = 类_订单数据(
             代码=代码,
             交易所=合约.交易所,
-            委托编号=委托编号,
+            订单编号=委托编号,
             类型=委托类型,
             方向=方向映射_CTP转VT[数据["Direction"]],
             开平=开平映射_CTP转VT[数据["CombOffsetFlag"]],
@@ -673,7 +674,7 @@ class 类_CTP交易接口(TdApi):
         self.请求编号 += 1
         self.reqUserLogin(请求, self.请求编号)
 
-    def 发送委托(self, 请求: 类_委托请求) -> str:
+    def 发送委托(self, 请求: 类_订单请求) -> str:
         """处理委托请求"""
         if 请求.开平 not in 开平映射_VT转CTP:
             self.网关.记录日志("无效开平方向")
@@ -714,11 +715,11 @@ class 类_CTP交易接口(TdApi):
 
         # 生成委托记录
         委托编号 = f"{self.前置编号}_{self.会话编号}_{self.委托编号}"
-        委托 = 请求.生成委托数据(委托编号, self.网关名称)
+        委托 = 请求.生成订单数据(委托编号, self.网关名称)
         self.网关.推送订单(委托)
-        return 委托.订单唯一标识
+        return 委托.网关_订单编号
 
-    def 撤消订单(self, 请求: 类_撤单请求):
+    def 撤销订单(self, 请求: 类_撤单请求):
         """处理撤单请求"""
         前置号, 会话号, 委托引用 = 请求.订单编号.split("_")
         撤单请求 = {
